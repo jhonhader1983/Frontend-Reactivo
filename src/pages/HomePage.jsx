@@ -10,6 +10,8 @@ export default function HomePage() {
   const [direccion, setDireccion] = useState("")
   const [mesa, setMesa] = useState("")
   const [contacto, setContacto] = useState("")
+  const [pedidoMensaje, setPedidoMensaje] = useState("")
+  const [pedidoError, setPedidoError] = useState("")
   const usuario = JSON.parse(localStorage.getItem("usuario") || "null")
 
   useEffect(() => {
@@ -43,6 +45,9 @@ export default function HomePage() {
     if (tipoEntrega === "domicilio" && !direccion) return alert("Por favor ingresa una dirección")
     if (tipoEntrega === "presencial" && !mesa) return alert("Por favor ingresa el número de mesa")
 
+    setPedidoError("")
+    setPedidoMensaje("")
+
     try {
       await api.post("/pedidos", {
         usuario: {
@@ -56,26 +61,37 @@ export default function HomePage() {
         })),
         total
       })
-    } catch (error) {
-      console.error("Error guardando pedido", error)
+
+      let waMsg = "Hola, quiero pedir:%0A"
+      carrito.forEach(p => {
+        waMsg += `${p.nombre} x${p.cantidad} - $${(p.precio * p.cantidad).toLocaleString()}%0A`
+      })
+      waMsg += `Total: $${total.toLocaleString()}%0A`
+      waMsg += tipoEntrega === "domicilio"
+        ? `Dirección: ${direccion}%0A`
+        : `Mesa: ${mesa}%0A`
+      waMsg += `Contacto: ${contacto}`
+
+      setPedidoMensaje("Pedido creado correctamente")
+      setCarrito([])
+      setDireccion("")
+      setMesa("")
+      setContacto("")
+      setTimeout(() => {
+        setModalAbierto(false)
+        setPedidoMensaje("")
+        window.open(`https://wa.me/573175397038?text=${waMsg}`, "_blank")
+      }, 1200)
+    } catch (err) {
+      const status = err.response?.status
+      if (status === 401) {
+        setPedidoError("Sesión expirada. Inicia sesión nuevamente.")
+      } else if (status === 403) {
+        setPedidoError("No tienes permisos para realizar esta acción.")
+      } else {
+        setPedidoError(err.response?.data?.error || "Error inesperado al crear el pedido")
+      }
     }
-
-    let mensaje = "Hola, quiero pedir:%0A"
-    carrito.forEach(p => {
-      mensaje += `${p.nombre} x${p.cantidad} - $${(p.precio * p.cantidad).toLocaleString()}%0A`
-    })
-    mensaje += `Total: $${total.toLocaleString()}%0A`
-    mensaje += tipoEntrega === "domicilio"
-      ? `Dirección: ${direccion}%0A`
-      : `Mesa: ${mesa}%0A`
-    mensaje += `Contacto: ${contacto}`
-
-    setModalAbierto(false)
-    setCarrito([])
-    setDireccion("")
-    setMesa("")
-    setContacto("")
-    window.open(`https://wa.me/573175397038?text=${mensaje}`, "_blank")
   }
 
   const handleLogout = () => {
@@ -217,8 +233,19 @@ export default function HomePage() {
               <input style={inputStyle} placeholder="Ej: 3001234567" value={contacto} onChange={e => setContacto(e.target.value)} type="tel" />
             </div>
 
+            {pedidoMensaje && (
+              <p style={{ color: "#27ae60", fontSize: "0.85rem", textAlign: "center", background: "#0e2c14", padding: "10px", borderRadius: "6px", marginBottom: "16px" }}>
+                {pedidoMensaje}
+              </p>
+            )}
+            {pedidoError && (
+              <p style={{ color: "#a32d2d", fontSize: "0.85rem", textAlign: "center", background: "#2c0e0e", padding: "10px", borderRadius: "6px", marginBottom: "16px" }}>
+                {pedidoError}
+              </p>
+            )}
+
             <div style={{ display: "flex", gap: "12px" }}>
-              <button onClick={() => setModalAbierto(false)}
+              <button onClick={() => { setModalAbierto(false); setPedidoError(""); setPedidoMensaje("") }}
                 style={{ flex: 1, padding: "12px", background: "none", border: "1px solid #3a2a10", color: "#8a8a8a", borderRadius: "6px", cursor: "pointer", fontFamily: "Georgia, serif" }}>
                 Cancelar
               </button>

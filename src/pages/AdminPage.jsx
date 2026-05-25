@@ -10,6 +10,7 @@ function AdminPage() {
   const [form, setForm] = useState({ nombre: "", descripcion: "", precio: "", imagen: "", categoria: "" });
   const [editandoId, setEditandoId] = useState(null);
   const [mensaje, setMensaje] = useState("");
+  const [mensajePedido, setMensajePedido] = useState("");
 
   const navigate = useNavigate();
 
@@ -90,8 +91,20 @@ function AdminPage() {
   };
 
   const cambiarEstado = async (id, estado) => {
-    await api.put(`/pedidos/${id}`, { estado });
-    cargarPedidos();
+    try {
+      await api.put(`/pedidos/${id}`, { estado });
+      setMensajePedido("Estado actualizado correctamente");
+      cargarPedidos();
+      setTimeout(() => setMensajePedido(""), 3000);
+    } catch (err) {
+      const status = err.response?.status;
+      if (status === 403) {
+        setMensajePedido("No tienes permisos para realizar esta acción.");
+      } else {
+        setMensajePedido(err.response?.data?.error || "Error inesperado al actualizar el estado");
+      }
+      setTimeout(() => setMensajePedido(""), 4000);
+    }
   };
 
   const cambiarRol = async (id, nuevoRol) => {
@@ -263,6 +276,16 @@ function AdminPage() {
           <div style={{ background: "#1a1208", borderRadius: "12px", border: "1px solid #2e2416", overflow: "hidden" }}>
             <div style={{ padding: "20px 30px", borderBottom: "1px solid #2e2416" }}>
               <h2 style={{ color: "#c9a84c", margin: 0, fontSize: "1.2rem", letterSpacing: "1px" }}>HISTORIAL DE PEDIDOS ({pedidos.length})</h2>
+              {mensajePedido && (
+                <p style={{
+                  color: mensajePedido.startsWith("No tienes") || mensajePedido.startsWith("Error") ? "#a32d2d" : "#27ae60",
+                  fontSize: "0.85rem", marginTop: "12px", marginBottom: 0,
+                  background: mensajePedido.startsWith("No tienes") || mensajePedido.startsWith("Error") ? "#2c0e0e" : "#0e2c14",
+                  padding: "8px 12px", borderRadius: "6px"
+                }}>
+                  {mensajePedido}
+                </p>
+              )}
             </div>
             {pedidos.length === 0 ? (
               <p style={{ color: "#6a5020", textAlign: "center", padding: "40px", fontStyle: "italic" }}>No hay pedidos aún.</p>
